@@ -1,0 +1,51 @@
+= LabWeek 2016 Q1, Sample SDP producer
+
+This project provides sample code to produce data from the Comcast Stream Data Platform (a.k.a. Headwaters).
+
+== Overview
+
+This sample producer demonstrates how to produce data into the Comcast Stream Data Platform (SDP), code name: "Headwaters". The point is to make the most simple but useful data producer program possible.
+
+In order to demonstrate data production, we use the `MonitoringEvent` schema. It is defined in the https://github.comcast.com/headwaters/avro-schemas[avro-schemas] project (mostly because of its simplicity). Obviously, any schema may be used, as long as it is registered (see the http://headwaters.sandbox.video.comcast.net/portal/producers.html[Headwaters' Portal documentation] for more details).
+
+The Kafka producer contains only 2 classes:
+
+- The `Producer` class, which is the main class and where most of the action happens. In there, we create a Kafka producer, and configure it appropriately to use the Headwaters' sandbox environment. There is also code to generate a relevant monitoring event, and sending it to Kafka.
+- The `AvroSerializer` class, which is a simple implementation of Kafka's `Serializer` interface. It uses the https://github.comcast.com/headwaters/avro-serde[avro-serde] library to convert application object (`MonitoringEvent` in this case) to byte array.
+
+The data produced in Kafka's Headwaters cluster:
+
+- The message key is a string that contains the timestamp
+- The message value is the Avro-serialized MonitoringEvent, as defined for "clean" topics
+
+
+== Kafka Producer Usage
+
+In order to run the project, first generate the jar file by running:
+
+----
+mvn clean package
+----
+
+Then the sample producer code can be run with the following command:
+
+----
+java -cp target/sample-producer-java-0.0.1-SNAPSHOT.jar -Dlog4j.configurationFile=src/test/resources/log4j2.xml com.comcast.headwaters.kafka.producer.Producer
+----
+
+== Checking Results
+
+In order to check what data is written to Kafka, you can use the https://github.comcast.com/headwaters/kafka-logger[kafka-logger].
+
+. Download the latest jar from the  https://github.comcast.com/headwaters/kafka-logger/releases/latest[latest release].
+. Run the following command:
++
+----
+java -cp kafka-logger-1.4.jar com.comcast.headwaters.kafka.logger.KafkaLogger --schema-registry=http://headwaters.sandbox.video.comcast.net/schema_registry/ --kafka zookeeper.connect=headwaters-producer.sandbox.video.comcast.net:2181 --kafka group.id=kafka-logger --display-key=true --topic clean.headwaters.core.MonitoringEvent
+----
+
+This results in a message being read from Kafka and deserialized as such:
+
+----
+24496 [pool-2-thread-1] INFO com.comcast.headwaters.kafka.logger.KafkaMessageConsumer  - Key: "1458194814487"; Message: {"header":{"headwaters.CoreHeader":{"timestamp":{"headwaters.datatype.Timestamp":{"value":1458194814488}},"uuid":{"headwaters.datatype.UUID":{"value":"881b7b86-c8f4-4ded-8346-e3ee50a7745d"}},"hostname":{"string":"hostname.englewood.co.denver.comcast.net"}}},"monitoringEventId":"LabWeekDemo","contextValue":315}
+----
